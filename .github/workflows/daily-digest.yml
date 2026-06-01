@@ -1,0 +1,37 @@
+name: Daily AI Builders Digest
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # 05:00 UTC = 07:00 Europe/Berlin (CEST)
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm ci
+
+      - name: Fetch feed data
+        working-directory: scripts
+        run: node prepare-digest.js > /tmp/feed.json
+
+      - name: Remix digest with LLM
+        working-directory: scripts
+        run: node remix-digest.js < /tmp/feed.json > /tmp/digest.txt
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Deliver to Telegram
+        working-directory: scripts
+        run: node deliver.js --file /tmp/digest.txt
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

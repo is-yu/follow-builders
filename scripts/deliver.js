@@ -160,7 +160,10 @@ async function main() {
     config = JSON.parse(await readFile(CONFIG_PATH, 'utf-8'));
   }
 
-  const delivery = config.delivery || { method: 'stdout' };
+  let delivery = config.delivery || { method: 'stdout' };
+  if (delivery.method === 'stdout' && process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+    delivery = { method: 'telegram', chatId: process.env.TELEGRAM_CHAT_ID };
+  }
   const digestText = await getDigestText();
 
   if (!digestText || digestText.trim().length === 0) {
@@ -172,9 +175,9 @@ async function main() {
     switch (delivery.method) {
       case 'telegram': {
         const botToken = process.env.TELEGRAM_BOT_TOKEN;
-        const chatId = delivery.chatId;
+        const chatId = delivery.chatId || process.env.TELEGRAM_CHAT_ID;
         if (!botToken) throw new Error('TELEGRAM_BOT_TOKEN not found in .env');
-        if (!chatId) throw new Error('delivery.chatId not found in config.json');
+        if (!chatId) throw new Error('delivery.chatId not found in config.json or TELEGRAM_CHAT_ID env');
         await sendTelegram(digestText, botToken, chatId);
         console.log(JSON.stringify({
           status: 'ok',
